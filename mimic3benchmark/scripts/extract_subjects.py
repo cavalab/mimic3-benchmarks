@@ -18,6 +18,7 @@ parser.add_argument('--phenotype_definitions', '-p', type=str,
                     default=os.path.join(os.path.dirname(__file__), '../resources/hcup_ccs_2015_definitions.yaml'),
                     help='YAML file with phenotype definitions.')
 parser.add_argument('--itemids_file', '-i', type=str, help='CSV containing list of ITEMIDs to keep.')
+parser.add_argument('--category_file', '-c', type=str, help='CSV containing list of category_descriptions to keep.')
 parser.add_argument('--verbose', '-v', type=int, help='Level of verbosity in output.', default=1)
 parser.add_argument('--test', action='store_true', help='TEST MODE: process only 1000 subjects, 1000000 events.')
 args, _ = parser.parse_known_args()
@@ -78,4 +79,9 @@ items_to_keep = set(
     [int(itemid) for itemid in dataframe_from_csv(args.itemids_file)['ITEMID'].unique()]) if args.itemids_file else None
 for table in args.event_tables:
     read_events_table_and_break_up_by_subject(args.mimic3_path, table, args.output_path, items_to_keep=items_to_keep,
+                                              subjects_to_keep=subjects, verbose=args.verbose)
+category_descriptions_to_keep = set(
+    [str(catdesc) for catdesc in pd.read_csv(args.category_file)['CATEGORYDESCRIPTION'].unique()]) if args.category_file else None
+
+read_notes_table_and_break_up_by_subject(args.mimic3_path, args.output_path,category_descriptions_to_keep=category_descriptions_to_keep,
                                               subjects_to_keep=subjects, verbose=args.verbose)
