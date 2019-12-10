@@ -9,6 +9,7 @@ from mimic3models import metrics
 from mimic3models.phenotyping.utils import save_results
 
 import numpy as np
+import pandas as pd
 import argparse
 import os
 import json
@@ -17,9 +18,8 @@ import json
 def read_and_extract_features(reader, period, features):
     ret = common_utils.read_chunk(reader, reader.get_number_of_examples())
     #ret = common_utils.read_chunk(reader, 100)
-    X = common_utils.extract_features_from_rawdata(ret['X'], ret['header'], period, features)
-    print(ret['name'])
-    return (X, ret['y'], ret['name'], ret['t'])
+    X = common_utils.extract_pennai_from_rawdata(ret['X'], ret['header'], period, features)
+    return (X, ret['y'], ret['name'], ret['t'], ret['header'])
 
 
 def main():
@@ -56,14 +56,28 @@ def main():
 
     print('Reading data and extracting features ...')
 
-    (train_X, train_y, train_names, train_ts) = read_and_extract_features(train_reader, args.period, args.features)
+    (train_X, train_y, train_names, train_ts, train_header) = read_and_extract_features(train_reader, args.period, args.features)
     train_y = np.array(train_y)
 
-    (val_X, val_y, val_names, val_ts) = read_and_extract_features(val_reader, args.period, args.features)
+    (val_X, val_y, val_names, val_ts, val_header) = read_and_extract_features(val_reader, args.period, args.features)
     val_y = np.array(val_y)
 
-    (test_X, test_y, test_names, test_ts) = read_and_extract_features(test_reader, args.period, args.features)
+    (test_X, test_y, test_names, test_ts, test_header) = read_and_extract_features(test_reader, args.period, args.features)
     test_y = np.array(test_y)
+
+    header = []
+    if(train_header != test_header):
+        print("something went wrong.  training and test headers do not match")
+        exit()
+    for i in train_header: 
+        if(i != 'Hours'):
+            for stat in ['min','max', 'mean', 'median', 'std', 'autocorr1', 'autocorr2', 'autocorr3', 'autocorr4', 'autocorr5' ]:
+                if((stat == 'mean' and i not in ['Capillary refill rate','Fraction inspired oxygen','Height']) or i in ['Diastolic blood pressure','Mean blood pressure','Oxygen saturation','Respiratory rate','Systolic blood pressure']):
+                    header.append(i + '_' + stat) 
+                else:
+                    header.append('deleteme_' + i + '_' + stat) 
+    
+    header.append('class') 
     np.save('/tmp/preimputed_train_X',train_X)
 
     print("train set shape:  {}".format(train_X.shape))
@@ -77,73 +91,32 @@ def main():
     val_X = np.array(imputer.transform(val_X), dtype=np.float32)
     test_X = np.array(imputer.transform(test_X), dtype=np.float32)
     train=np.append(train_X,train_y[:,23][:, None],axis=1)
-    val=np.append(val_X,val_y[:,23][:, None],axis=1)
-    test=np.append(test_X,test_y[:,23][:, None],axis=1)
-    #train = train.astype(np.float16)
-    np.save('/tmp/train_X',train_X)
-    np.save('/tmp/train_y',train_y)
-    np.save('/tmp/train',train)
-    np.savetxt('/tmp/train.csv',train, delimiter=',', fmt='%1.2f')
-    np.save('/tmp/val_X',val_X)
-    np.save('/tmp/val_y',val_y)
-    np.save('/tmp/val',val)
-    np.save('/tmp/test_X',test_X)
-    np.save('/tmp/test_y',test_y)
-    np.save('/tmp/test',test)
 
 
-    print('Normalizing the data to have zero mean and unit variance ...')
-    scaler = StandardScaler()
-    scaler.fit(train_X)
-    train_X = scaler.transform(train_X)
-    val_X = scaler.transform(val_X)
-    test_X = scaler.transform(test_X)
-    np.savetxt('/tmp/train_scaled.csv',train_X, delimiter=',')
 
-    n_tasks = 25
-    result_dir = os.path.join(args.output_dir, 'results')
-    common_utils.create_directory(result_dir)
 
-    for (penalty, C) in zip(penalties, coefs):
-        model_name = '{}.{}.{}.C{}'.format(args.period, args.features, penalty, C)
+    summary=pd.DataFrame(data=train,columns=header)
+    summary.to_pickle(args.output_dir + "./summary.pkl")
+    class_count=min(summary.groupby('class').size())
+    summary=summary.assign(class_count=0)
+    count_true = 0
+    count_false = 0
+    for i, row in summary.iterrows():
+     if (row['class'] == 1):
+       summary.set_value(i,'class_count',count_true)
+       count_true+=1
+     if (row['class'] == 0):
+       summary.set_value(i,'class_count',count_false)
+       count_false+=1
 
-        train_activations = np.zeros(shape=train_y.shape, dtype=float)
-        val_activations = np.zeros(shape=val_y.shape, dtype=float)
-        test_activations = np.zeros(shape=test_y.shape, dtype=float)
+    summary = summary[summary.class_count < class_count]
+    summary = summary[summary.columns.drop(list(summary.filter(regex='deleteme')))]
+    summary = summary.drop(columns=['class_count'])
 
-        for task_id in range(n_tasks):
-            print('Starting task {}'.format(task_id))
-
-            logreg = LogisticRegression(penalty=penalty, C=C, random_state=42)
-            logreg.fit(train_X, train_y[:, task_id])
-
-            train_preds = logreg.predict_proba(train_X)
-            train_activations[:, task_id] = train_preds[:, 1]
-
-            val_preds = logreg.predict_proba(val_X)
-            val_activations[:, task_id] = val_preds[:, 1]
-
-            test_preds = logreg.predict_proba(test_X)
-            test_activations[:, task_id] = test_preds[:, 1]
-
-        with open(os.path.join(result_dir, 'train_{}.json'.format(model_name)), 'w') as f:
-            ret = metrics.print_metrics_multilabel(train_y, train_activations)
-            ret = {k: float(v) for k, v in ret.items() if k != 'auc_scores'}
-            json.dump(ret, f)
-
-        with open(os.path.join(result_dir, 'val_{}.json'.format(model_name)), 'w') as f:
-            ret = metrics.print_metrics_multilabel(val_y, val_activations)
-            ret = {k: float(v) for k, v in ret.items() if k != 'auc_scores'}
-            json.dump(ret, f)
-
-        with open(os.path.join(result_dir, 'test_{}.json'.format(model_name)), 'w') as f:
-            ret = metrics.print_metrics_multilabel(test_y, test_activations)
-            ret = {k: float(v) for k, v in ret.items() if k != 'auc_scores'}
-            json.dump(ret, f)
-
-        save_results(test_names, test_ts, test_activations, test_y,
-                     os.path.join(args.output_dir, 'predictions', model_name + '.csv'))
-
+    summary = summary.round(decimals=3)
+    summary.to_csv(args.output_dir + './summary.csv',index=False)
+    
+    np.savetxt(args.output_dir + '/pennai.csv',train, delimiter=',', fmt='%1.2f')
 
 if __name__ == '__main__':
     main()

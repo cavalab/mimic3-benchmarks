@@ -6,15 +6,26 @@ from scipy.stats import skew
 import pandas as pd
 import math
 
-def autocorr(x):
+def autocorr(x,lag):
     s = pd.Series(x)
-    a =s.autocorr(lag=1)
+    a =s.autocorr(lag=lag)
     if(math.isnan(a)):
         return(1)
     else:
         return(a)
 
-all_functions = [min, max, np.mean, np.median, np.std, autocorr]
+def autocorr1(x):
+    return autocorr(x,1)
+def autocorr2(x):
+    return autocorr(x,2)
+def autocorr3(x):
+    return autocorr(x,3)
+def autocorr4(x):
+    return autocorr(x,4)
+def autocorr5(x):
+    return autocorr(x,5)
+
+all_functions = [min, max, np.mean, np.median, np.std, autocorr1, autocorr2, autocorr3, autocorr4, autocorr5]
 min_functions = [np.mean]
 
 functions_map = {
