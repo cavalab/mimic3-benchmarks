@@ -203,6 +203,13 @@ Use the following command for logistic regression. It will have L1 regularizatio
 `ihm_C`, `decomp_C`, `los_C` and `ph_C` coefficients control the relative weight of the tasks in the multitask model. Default is `1.0`. Multitask network architectures are stored in `mimic3models/multitask/keras_models`. Here is a sample command for running a multitask model.
        
        python -um mimic3models.multitask.main --network mimic3models/keras_models/multitask_lstm.py --dim 512 --timestep 1 --mode train --batch_size 16 --dropout 0.3 --ihm_C 0.2 --decomp_C 1.0 --los_C 1.5 --pheno_C 1.0 --output_dir mimic3models/multitask
+
+### Format for PennAI 
+
+Generate csv to run in PennAI:
+
+python -um mimic3models.pennai.summary.main
+
        
 
 ## General todos:
