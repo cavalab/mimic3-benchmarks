@@ -14,6 +14,14 @@ import argparse
 import os
 import json
 
+#only calculate mean for these columns
+mean_only_columns = ['Capillary refill rate','Fraction inspired oxygen','Height']
+#calculte full stats for these columns
+calc_stat_columns = ['Diastolic blood pressure','Mean blood pressure','Oxygen saturation','Respiratory rate','Systolic blood pressure']
+#stats to calculate
+stats = ['min','max', 'mean', 'median', 'std', 'autocorr1', 'autocorr2', 'autocorr3', 'autocorr4', 'autocorr5' ]
+
+
 
 def read_and_extract_features(reader, period, features):
     ret = common_utils.read_chunk(reader, reader.get_number_of_examples())
@@ -65,58 +73,76 @@ def main():
     (test_X, test_y, test_names, test_ts, test_header) = read_and_extract_features(test_reader, args.period, args.features)
     test_y = np.array(test_y)
 
-    header = []
-    if(train_header != test_header):
+    summary_header = []
+    if(train_header != test_header or train_header != val_header):
         print("something went wrong.  training and test headers do not match")
         exit()
     for i in train_header: 
         if(i != 'Hours'):
-            for stat in ['min','max', 'mean', 'median', 'std', 'autocorr1', 'autocorr2', 'autocorr3', 'autocorr4', 'autocorr5' ]:
-                if((stat == 'mean' and i not in ['Capillary refill rate','Fraction inspired oxygen','Height']) or i in ['Diastolic blood pressure','Mean blood pressure','Oxygen saturation','Respiratory rate','Systolic blood pressure']):
-                    header.append(i + '_' + stat) 
+            for stat in stats:
+                if(stat == 'mean' and i not in mean_only_columns or i in calc_stat_columns):
+                    summary_header.append(i + '_' + stat) 
                 else:
-                    header.append('deleteme_' + i + '_' + stat) 
-    
-    header.append('class') 
-    np.save('/tmp/preimputed_train_X',train_X)
-
+                    summary_header.append('deleteme_' + i + '_' + stat) 
+    summary_header.append('class') 
+    #
     print("train set shape:  {}".format(train_X.shape))
     print("validation set shape: {}".format(val_X.shape))
     print("test set shape: {}".format(test_X.shape))
 
     print('Imputing missing values ...')
-    imputer = Imputer(missing_values=np.nan, strategy='mean', axis=0, verbose=0, copy=True)
-    imputer.fit(train_X)
-    train_X = np.array(imputer.transform(train_X), dtype=np.float32)
-    val_X = np.array(imputer.transform(val_X), dtype=np.float32)
-    test_X = np.array(imputer.transform(test_X), dtype=np.float32)
+    # impute for training
+    train_imputer = Imputer(missing_values=np.nan, strategy='mean', axis=0, verbose=0, copy=True)
+    train_imputer.fit(train_X)
+    train_X = np.array(train_imputer.transform(train_X), dtype=np.float32)
+    # impute for testing
+    test_imputer = Imputer(missing_values=np.nan, strategy='mean', axis=0, verbose=0, copy=True)
+    test_imputer.fit(test_X)
+    test_X = np.array(test_imputer.transform(test_X), dtype=np.float32)
+    # impute for validation
+    val_imputer = Imputer(missing_values=np.nan, strategy='mean', axis=0, verbose=0, copy=True)
+    val_imputer.fit(val_X)
+    val_X = np.array(val_imputer.transform(val_X), dtype=np.float32)
+    #
     train=np.append(train_X,train_y[:,23][:, None],axis=1)
-
-
-
-
-    summary=pd.DataFrame(data=train,columns=header)
-    summary.to_pickle(args.output_dir + "./summary.pkl")
-    class_count=min(summary.groupby('class').size())
-    summary=summary.assign(class_count=0)
+    test=np.append(test_X,test_y[:,23][:, None],axis=1)
+    val=np.append(val_X,val_y[:,23][:, None],axis=1)
+    #
+    train_summary=pd.DataFrame(data=train,columns=summary_header)
+    train_summary.to_pickle(args.output_dir + "./train_summary.pkl")
+    #
+    test_summary=pd.DataFrame(data=test,columns=summary_header)
+    test_summary.to_pickle(args.output_dir + "./test_summary.pkl")
+    #
+    val_summary=pd.DataFrame(data=val,columns=summary_header)
+    val_summary.to_pickle(args.output_dir + "./val_summary.pkl")
+    #balance cases/controls for training data
+    class_count=min(train_summary.groupby('class').size())
+    train_summary=train_summary.assign(class_count=0)
     count_true = 0
     count_false = 0
-    for i, row in summary.iterrows():
+    for i, row in train_summary.iterrows():
      if (row['class'] == 1):
-       summary.set_value(i,'class_count',count_true)
+       train_summary.set_value(i,'class_count',count_true)
        count_true+=1
      if (row['class'] == 0):
-       summary.set_value(i,'class_count',count_false)
+       train_summary.set_value(i,'class_count',count_false)
        count_false+=1
-
-    summary = summary[summary.class_count < class_count]
-    summary = summary[summary.columns.drop(list(summary.filter(regex='deleteme')))]
-    summary = summary.drop(columns=['class_count'])
-
-    summary = summary.round(decimals=3)
-    summary.to_csv(args.output_dir + './summary.csv',index=False)
-    
-    np.savetxt(args.output_dir + '/pennai.csv',train, delimiter=',', fmt='%1.2f')
+    train_summary = train_summary[train_summary.class_count < class_count]
+    train_summary = train_summary.drop(columns=['class_count'])
+    #remove extra columns
+    train_summary = train_summary[train_summary.columns.drop(list(train_summary.filter(regex='deleteme')))]
+    test_summary = test_summary[test_summary.columns.drop(list(test_summary.filter(regex='deleteme')))]
+    val_summary = val_summary[val_summary.columns.drop(list(val_summary.filter(regex='deleteme')))]
+    #round values
+    test_summary = test_summary.round(decimals=3)
+    train_summary = train_summary.round(decimals=3)
+    val_summary = val_summary.round(decimals=3)
+    #save to csv
+    train_summary.to_csv(args.output_dir + './train_summary.csv',index=False)
+    test_summary.to_csv(args.output_dir + './test_summary.csv',index=False)
+    val_summary.to_csv(args.output_dir + './val_summary.csv',index=False)
+    print('done')
 
 if __name__ == '__main__':
     main()
