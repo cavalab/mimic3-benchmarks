@@ -20,12 +20,13 @@ mean_only_columns = ['Capillary refill rate','Fraction inspired oxygen','Height'
 calc_stat_columns = ['Diastolic blood pressure','Mean blood pressure','Oxygen saturation','Respiratory rate','Systolic blood pressure']
 #stats to calculate
 stats = ['min','max', 'mean', 'median', 'std', 'autocorr1', 'autocorr2', 'autocorr3', 'autocorr4', 'autocorr5' ]
+#choose the endpoint
+phenotype_header = ['Acute and unspecified renal failure', 'Acute cerebrovascular disease', 'Acute myocardial infarction', 'Cardiac dysrhythmias', 'Chronic kidney disease', 'Chronic obstructive pulmonary disease and bronchiectasis', 'Complications of surgical procedures or medical care', 'Conduction disorders', 'Congestive heart failure; nonhypertensive', 'Coronary atherosclerosis and other heart disease', 'Diabetes mellitus with complications', 'Diabetes mellitus without complication', 'Disorders of lipid metabolism', 'Essential hypertension', 'Fluid and electrolyte disorders', 'Gastrointestinal hemorrhage', 'Hypertension with complications and secondary hypertension', 'Other liver diseases', 'Other lower respiratory disease', 'Other upper respiratory disease', 'Pleurisy; pneumothorax; pulmonary collapse', 'Pneumonia (except that caused by tuberculosis or sexually transmitted disease)', 'Respiratory failure; insufficiency; arrest (adult)', 'Septicemia (except in labor)', 'Shock']
 
 
 
 def read_and_extract_features(reader, period, features):
     ret = common_utils.read_chunk(reader, reader.get_number_of_examples())
-    #ret = common_utils.read_chunk(reader, 100)
     X = common_utils.extract_pennai_from_rawdata(ret['X'], ret['header'], period, features)
     return (X, ret['y'], ret['name'], ret['t'], ret['header'])
 
@@ -36,6 +37,10 @@ def main():
                         choices=['first4days', 'first8days', 'last12hours', 'first25percent', 'first50percent', 'all'])
     parser.add_argument('--features', type=str, default='all', help='specifies what features to extract',
                         choices=['all', 'len', 'all_but_len'])
+    parser.add_argument('--phenotype', type=str, default='Septicemia (except in labor)', help='specifies which endpoint to use for class',
+                        choices=phenotype_header)
+    parser.add_argument('--balance', dest='balanced', action='store_true')
+    parser.set_defaults(balanced=False)
     parser.add_argument('--grid-search', dest='grid_search', action='store_true')
     parser.add_argument('--no-grid-search', dest='grid_search', action='store_false')
     parser.set_defaults(grid_search=False)
@@ -44,7 +49,6 @@ def main():
     parser.add_argument('--output_dir', type=str, help='Directory relative which all output files are stored',
                         default='.')
     args = parser.parse_args()
-    print(args)
 
     if args.grid_search:
         penalties = ['l2', 'l2', 'l2', 'l2', 'l2', 'l2', 'l1', 'l1', 'l1', 'l1', 'l1']
@@ -84,7 +88,11 @@ def main():
                     summary_header.append(i + '_' + stat) 
                 else:
                     summary_header.append('deleteme_' + i + '_' + stat) 
+    class_column = phenotype_header.index(args.phenotype)
     summary_header.append('class') 
+
+    
+    
     #
     print("train set shape:  {}".format(train_X.shape))
     print("validation set shape: {}".format(val_X.shape))
@@ -104,9 +112,9 @@ def main():
     val_imputer.fit(val_X)
     val_X = np.array(val_imputer.transform(val_X), dtype=np.float32)
     #
-    train=np.append(train_X,train_y[:,23][:, None],axis=1)
-    test=np.append(test_X,test_y[:,23][:, None],axis=1)
-    val=np.append(val_X,val_y[:,23][:, None],axis=1)
+    train=np.append(train_X,train_y[:,class_column][:, None],axis=1)
+    test=np.append(test_X,test_y[:,class_column][:, None],axis=1)
+    val=np.append(val_X,val_y[:,class_column][:, None],axis=1)
     #
     train_summary=pd.DataFrame(data=train,columns=summary_header)
     train_summary.to_pickle(args.output_dir + "./train_summary.pkl")
@@ -116,20 +124,25 @@ def main():
     #
     val_summary=pd.DataFrame(data=val,columns=summary_header)
     val_summary.to_pickle(args.output_dir + "./val_summary.pkl")
-    #balance cases/controls for training data
-    class_count=min(train_summary.groupby('class').size())
-    train_summary=train_summary.assign(class_count=0)
-    count_true = 0
-    count_false = 0
-    for i, row in train_summary.iterrows():
-     if (row['class'] == 1):
-       train_summary.set_value(i,'class_count',count_true)
-       count_true+=1
-     if (row['class'] == 0):
-       train_summary.set_value(i,'class_count',count_false)
-       count_false+=1
-    train_summary = train_summary[train_summary.class_count < class_count]
-    train_summary = train_summary.drop(columns=['class_count'])
+
+    if(args.balanced):
+        #create balanced training dataset
+        class_count=min(train_summary.groupby('class').size())
+        train_summary=train_summary.assign(class_count=0)
+        count_true = 0
+        count_false = 0
+        for i, row in train_summary.iterrows():
+            if (row['class'] == 1):
+                train_summary.set_value(i,'class_count',count_true)
+                count_true+=1
+            if (row['class'] == 0):
+                train_summary.set_value(i,'class_count',count_false)
+                count_false+=1
+        train_summary = train_summary[train_summary.class_count < class_count]
+        train_summary = train_summary.drop(columns=['class_count'])
+
+
+
     #remove extra columns
     train_summary = train_summary[train_summary.columns.drop(list(train_summary.filter(regex='deleteme')))]
     test_summary = test_summary[test_summary.columns.drop(list(test_summary.filter(regex='deleteme')))]

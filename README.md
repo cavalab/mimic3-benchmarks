@@ -206,9 +206,9 @@ Use the following command for logistic regression. It will have L1 regularizatio
 
 ### Format for PennAI 
 
-Generate csv to run in PennAI:
+Generate summary statistics for ts data, setting class=phenotype
 
-python -um mimic3models.pennai.summary.main
+       python -um mimic3models.pennai.summary.main --output_dir=data/pennai/ --phenotype='Acute and unspecified renal failure' --balance
 
        
 
