@@ -27,6 +27,7 @@ phenotype_header = ['Acute and unspecified renal failure', 'Acute cerebrovascula
 
 def read_and_extract_features(reader, period, features):
     ret = common_utils.read_chunk(reader, reader.get_number_of_examples())
+    #ret = common_utils.read_chunk(reader, 100)
     X = common_utils.extract_pennai_from_rawdata(ret['X'], ret['header'], period, features)
     return (X, ret['y'], ret['name'], ret['t'], ret['header'])
 
