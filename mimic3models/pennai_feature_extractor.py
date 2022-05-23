@@ -5,6 +5,7 @@ import numpy as np
 from scipy.stats import skew
 import pandas as pd
 import math
+from pqdm.processes import pqdm
 
 def autocorr(x,lag):
     s = pd.Series(x)
@@ -93,9 +94,16 @@ def extract_features_single_episode(data_raw, period, functions):
                           for i in range(len(data_raw))]
     return np.concatenate(extracted_features, axis=0)
 
-
+from tqdm import tqdm
 def extract_pennai_features(data_raw, period, features):
     period = periods_map[period]
     functions = functions_map[features]
-    return np.array([extract_features_single_episode(x, period, functions)
-                     for x in data_raw])
+    # return np.array([extract_features_single_episode(x, period, functions)
+    #                  for x in tqdm(data_raw)
+    #                 ])
+    result = pqdm([[x, period, functions] for x in data_raw],
+             extract_features_single_episode,
+             n_jobs=20,
+             argument_type='args'
+             )
+    return np.array(result)

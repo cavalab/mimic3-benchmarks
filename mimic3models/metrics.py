@@ -4,7 +4,7 @@ from __future__ import print_function
 import numpy as np
 from sklearn import metrics
 
-
+import pdb
 # for decompensation, in-hospital mortality
 
 def print_metrics_binary(y_true, predictions, verbose=1):
@@ -29,6 +29,13 @@ def print_metrics_binary(y_true, predictions, verbose=1):
     auprc = metrics.auc(recalls, precisions)
     minpse = np.max([min(x, y) for (x, y) in zip(precisions, recalls)])
 
+    logloss = metrics.log_loss(y_true, predictions[:,1])
+
+    weights = np.array([1/len(y_true[y_true==i]) for i in y_true])
+    weights /= np.sum(weights)
+    ballogloss = metrics.log_loss(y_true, predictions[:,1],
+            sample_weight=weights)
+
     if verbose:
         print("accuracy = {}".format(acc))
         print("precision class 0 = {}".format(prec0))
@@ -38,6 +45,8 @@ def print_metrics_binary(y_true, predictions, verbose=1):
         print("AUC of ROC = {}".format(auroc))
         print("AUC of PRC = {}".format(auprc))
         print("min(+P, Se) = {}".format(minpse))
+        print(f"log_loss = {logloss}")
+        print(f"bal_log_loss = {ballogloss}")
 
     return {"acc": acc,
             "prec0": prec0,
@@ -46,7 +55,10 @@ def print_metrics_binary(y_true, predictions, verbose=1):
             "rec1": rec1,
             "auroc": auroc,
             "auprc": auprc,
-            "minpse": minpse}
+            "minpse": minpse,
+            'logloss': logloss,
+            'ballogloss': ballogloss
+            }
 
 
 # for phenotyping

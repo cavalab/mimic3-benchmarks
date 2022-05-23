@@ -1,13 +1,17 @@
 from __future__ import absolute_import
 from __future__ import print_function
-
+import ipdb
 import numpy as np
 import os
 import json
 import random
+import pandas as pd
+from pqdm.processes import pqdm
+from tqdm import tqdm
 
 from mimic3models.feature_extractor import extract_features
 from mimic3models.pennai_feature_extractor import extract_pennai_features
+from mimic3models.tsfresh_feature_extractor import extract_tsfresh_features
 
 
 def convert_to_dict(data, header, channel_info):
@@ -21,6 +25,39 @@ def convert_to_dict(data, header, channel_info):
         ret[i-1] = list(map(lambda x: (float(x[0]), float(x[1])), ret[i-1]))
     return ret
 
+def convert_to_longdf(i, data, header, channel_info):
+    """convert data to long file in tsfresh readable format. 
+    see https://tsfresh.readthedocs.io/en/latest/text/data_formats.html
+    """
+    df = pd.DataFrame(data, columns=header)
+    df['PID'] = i
+    # cols = ['PID']+header
+    for c in header:
+        if c in channel_info.keys() and len(channel_info[c]['possible_values'])>0:
+            df[c] = df[c].apply(lambda x: float(channel_info[c]['values'][x])
+                    if x != "" else np.nan)
+            # df[c] = df[c].apply(lambda x: np.nan if x == '' else x)
+        if df[c].dtype not in ['float64','int','float32','bool']:
+            df.loc[df[c]=='',c] = np.nan
+            df[c] = df[c].astype(float)
+        assert df[c].dtype in ['float64','int','float32','bool']
+            # print('couldnt nan fill',c,'of type',df[c].dtype)
+        # try:
+        # except:
+        #     ipdb.set_trace()
+
+    df = df.melt(id_vars=['PID','Hours'])
+    df = df.dropna()
+    # df['value'] = df['value'].astype(float)
+
+    
+
+    return df
+    # for i in range(1, data.shape[1]):
+    #     ret[i-1] = [(t, x) for (t, x) in zip(data[:, 0], data[:, i]) if x != ""]
+    #     channel = header[i]
+    #     if len(channel_info[channel]['possible_values']) != 0:
+    #         ret[i-1] = list(map(lambda x: (x[0], channel_info[channel]['values'][x[1]]), ret[i-1]))
 
 def extract_features_from_rawdata(chunk, header, period, features):
     with open(os.path.join(os.path.dirname(__file__), "resources/channel_info.json")) as channel_info_file:
@@ -34,6 +71,24 @@ def extract_pennai_from_rawdata(chunk, header, period, features):
     data = [convert_to_dict(X, header, channel_info) for X in chunk]
     return extract_pennai_features(data, period, features)
 
+def extract_tsfresh_from_rawdata(chunk, header, period, fold, features):
+    with open(os.path.join(os.path.dirname(__file__), "resources/channel_info.json")) as channel_info_file:
+        channel_info = json.loads(channel_info_file.read())
+    # data = [convert_to_longdf(i, X, header, channel_info) for i,X in
+    #         tqdm(enumerate(chunk))]
+    print('building time series from raw data...')
+    data = pqdm([(i, X, header, channel_info) for i,X in enumerate(chunk)],
+                convert_to_longdf,
+                n_jobs=20,
+                argument_type='args'
+               )
+    print('... done.')
+    print('running tsfresh...')
+    # data = [d for d in data if isinstance(d,pd.DataFrame) and len(d) > 0]
+    # ipdb.set_trace()
+    # data = pd.concat(data)
+    return extract_tsfresh_features(data, period, fold, features)
+
 def read_chunk(reader, chunk_size):
     data = {}
     for i in range(chunk_size):
@@ -44,7 +99,6 @@ def read_chunk(reader, chunk_size):
             data[k].append(v)
     data["header"] = data["header"][0]
     return data
-
 
 def sort_and_shuffle(data, batch_size):
     """ Sort data by the length and then make batches and shuffle them.
@@ -203,3 +257,30 @@ def pad_zeros(arr, min_length=None):
         ret = [np.concatenate([x, np.zeros((min_length - x.shape[0],) + x.shape[1:], dtype=dtype)], axis=0)
                for x in ret]
     return np.array(ret)
+
+phenotype_names = ['Acute and unspecified renal failure',
+        'Acute cerebrovascular disease',
+        'Acute myocardial infarction',
+        'Cardiac dysrhythmias',
+        'Chronic kidney disease',
+        'Chronic obstructive pulmonary disease and bronchiectasis',
+        'Complications of surgical procedures or medical care',
+        'Conduction disorders',
+        'Congestive heart failure; nonhypertensive', 
+        'Coronary atherosclerosis and other heart disease',
+        'Diabetes mellitus with complications',
+        'Diabetes mellitus without complication',
+        'Disorders of lipid metabolism',
+        'Essential hypertension',
+        'Fluid and electrolyte disorders',
+        'Gastrointestinal hemorrhage',
+        'Hypertension with complications and secondary hypertension',
+        'Other liver diseases', 
+        'Other lower respiratory disease',
+        'Other upper respiratory disease',
+        'Pleurisy; pneumothorax; pulmonary collapse',
+        'Pneumonia (except that caused by tuberculosis or sexually transmitted disease)',
+        'Respiratory failure; insufficiency; arrest (adult)',
+        'Septicemia (except in labor)',
+        'Shock'
+        ]
