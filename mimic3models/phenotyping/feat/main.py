@@ -37,7 +37,7 @@ def read_data(datapath, features, phenotype, fold):
     print('reading',filepath)
     df = pd.read_csv(filepath).drop("Unnamed: 0", axis=1)
     df = df.rename(columns={k:k.replace('"','').strip() for k in df.columns})
-    X = df.drop(dropcols, axis=1)
+    X = df.drop(columns=dropcols, axis=1)
     renames = {k:k.replace(',','_').replace(' ','_') for k in X.columns}
     X = X.rename(columns=renames)
     print('Features:',X.columns)
@@ -62,25 +62,13 @@ def save_results(task, predictions, labels, path):
 
 def main():
     parser = argparse.ArgumentParser()
-<<<<<<< HEAD
-    parser.add_argument('--period', type=str, default='all', help='specifies which period extract features from',
-                        choices=['first4days', 'first8days', 'last12hours', 'first25percent', 'first50percent', 'all'])
-=======
-    # parser.add_argument('--period', type=str, default='all', 
-    #         help='specifies which period extract features from',
-    #         choices=['first4days', 'first8days', 'last12hours', 
     parser.add_argument('--seed', type=int, default=42,
                         help='random state')
->>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
     parser.add_argument('--features', type=str, default='extract',
                         help='specifies which feature set to use',
                         choices=['extract','tsfresh'])
     parser.add_argument('--phenotype', type=str, help='which phenotype to model', 
-<<<<<<< HEAD
-                        default='all')
-=======
                         default='all', choices=['all']+phenotype_names)
->>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
     parser.add_argument('--data', type=str, help='Path to the data of phenotyping task',
                         default=os.path.join(os.path.dirname(__file__), '../../../data/phenotyping/'))
     parser.add_argument('--output_dir', type=str, help='Directory relative which all output files are stored',
@@ -91,15 +79,11 @@ def main():
     args.phenotype=args.phenotype.replace('"','').strip()
     print('Reading data ...')
 
-<<<<<<< HEAD
-    (train_X, train_y) = read_data(args.data, args.features, args.phenotype, 'train')
-=======
     (train_X, train_y) = read_data(args.data,
                                    args.features,
                                    args.phenotype,
                                    'train'
                                   )
->>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
     (val_X, val_y) = read_data(args.data, 
                                args.features,
                                args.phenotype, 
@@ -155,10 +139,10 @@ def main():
             train_archive_preds = est.predict_proba_archive(train_X)
             val_archive_preds = est.predict_proba_archive(val_X)
             test_archive_preds = est.predict_proba_archive(test_X)
-            for a, (train_preds, val_preds, test_preds) 
-                in enumerate(zip(train_archive_preds, 
-                                 val_archive_preds,
-                                 test_archive_preds)):
+            for a, (train_preds, val_preds, test_preds) in enumerate(zip(
+                train_archive_preds, 
+                val_archive_preds,
+                test_archive_preds)):
             
                 save_results(task, 
                              test_activations[:, task_id],
