@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from sklearn.preprocessing import Imputer, StandardScaler
+# from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, Imputer
 from sklearn.linear_model import LogisticRegression
 from mimic3benchmark.readers import PhenotypingReader
 from mimic3models import common_utils
@@ -51,12 +52,6 @@ def main():
                         default='.')
     args = parser.parse_args()
 
-    if args.grid_search:
-        penalties = ['l2', 'l2', 'l2', 'l2', 'l2', 'l2', 'l1', 'l1', 'l1', 'l1', 'l1']
-        coefs = [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001, 1.0, 0.1, 0.01, 0.001, 0.0001]
-    else:
-        penalties = ['l1']
-        coefs = [0.1]
 
     train_reader = PhenotypingReader(dataset_dir=os.path.join(args.data, 'train'),
                                      listfile=os.path.join(args.data, 'train_listfile.csv'))
@@ -149,13 +144,13 @@ def main():
     test_summary = test_summary[test_summary.columns.drop(list(test_summary.filter(regex='deleteme')))]
     val_summary = val_summary[val_summary.columns.drop(list(val_summary.filter(regex='deleteme')))]
     #round values
-    test_summary = test_summary.round(decimals=3)
-    train_summary = train_summary.round(decimals=3)
-    val_summary = val_summary.round(decimals=3)
+    # test_summary = test_summary.round(decimals=3)
+    # train_summary = train_summary.round(decimals=3)
+    # val_summary = val_summary.round(decimals=3)
     #save to csv
-    train_summary.to_csv(args.output_dir + './train_summary.csv',index=False)
-    test_summary.to_csv(args.output_dir + './test_summary.csv',index=False)
-    val_summary.to_csv(args.output_dir + './val_summary.csv',index=False)
+    train_summary.to_csv(args.output_dir + f'./{class_column}train_summary.csv',index=False)
+    test_summary.to_csv(args.output_dir + f'./{class_column}test_summary.csv',index=False)
+    val_summary.to_csv(args.output_dir + f'./{class_column}val_summary.csv',index=False)
     print('done')
 
 if __name__ == '__main__':
