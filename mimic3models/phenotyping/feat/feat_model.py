@@ -3,20 +3,23 @@ from feat import FeatClassifier
 
 
 est = FeatClassifier(
-        max_depth=6,
-        max_dim = 20,
+        max_depth=3,
+        max_dim = 100,
         obj='fitness,size',
         sel='lexicase',
-        gens = 1,
-        pop_size = 1,
+        # gens = 0,
+        # pop_size = 1,
+        # tune_final=False,
+        gens = 100,
+        pop_size = 100,
         max_stall = 20,
         stagewise_xo = True,
         scorer='log',
-        verbosity=2,
+        verbosity=1,
         shuffle=False,
         ml='LR',
         fb=0.5,
-        n_jobs=20,
+        n_jobs=1,
         functions="split,and,or,not,b2f",
         split=0.8,
         normalize=False,
@@ -32,6 +35,6 @@ hyper_params = [
          functions="+,-,*,relu,split",
          batch_size=200,
          backprop=True,
-         iters=1
+         iters=1,
         )
 ]

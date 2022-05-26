@@ -18,16 +18,18 @@ import ipdb
 import uuid
 from .jsonify import jsonify
 
+from mimic3models.common_utils import phenotype_names as phenotype_names
+phenotype_names = [p.replace(' ','-').replace(';','') for p in phenotype_names]
 
 def read_data(datapath, features, phenotype, fold):
     if features == 'extract':
-        dropcols = common_utils.phenotype_names
+        dropcols = phenotype_names
         filepath = f'{datapath}/{features}/{fold}.csv'
         if phenotype == 'all':
-            ynames = common_utils.phenotype_names
+            ynames = phenotype_names
         else:
             ynames = phenotype
-            assert phenotype in common_utils.phenotype_names
+            assert phenotype in phenotype_names
     elif features == 'tsfresh':
         filepath = f'{datapath}/{features}/{phenotype}_{fold}.csv'
         dropcols = 'class'
@@ -42,7 +44,7 @@ def read_data(datapath, features, phenotype, fold):
 
     y = pd.DataFrame(df[ynames])
     if features == 'tsfresh':
-        y = y.rename(columns={'class':phenotype.replace('-',' ')})
+        y = y.rename(columns={'class':phenotype})
 
     return (X, y)
 
@@ -60,13 +62,25 @@ def save_results(task, predictions, labels, path):
 
 def main():
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument('--period', type=str, default='all', help='specifies which period extract features from',
                         choices=['first4days', 'first8days', 'last12hours', 'first25percent', 'first50percent', 'all'])
+=======
+    # parser.add_argument('--period', type=str, default='all', 
+    #         help='specifies which period extract features from',
+    #         choices=['first4days', 'first8days', 'last12hours', 
+    parser.add_argument('--seed', type=int, default=42,
+                        help='random state')
+>>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
     parser.add_argument('--features', type=str, default='extract',
                         help='specifies which feature set to use',
                         choices=['extract','tsfresh'])
     parser.add_argument('--phenotype', type=str, help='which phenotype to model', 
+<<<<<<< HEAD
                         default='all')
+=======
+                        default='all', choices=['all']+phenotype_names)
+>>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
     parser.add_argument('--data', type=str, help='Path to the data of phenotyping task',
                         default=os.path.join(os.path.dirname(__file__), '../../../data/phenotyping/'))
     parser.add_argument('--output_dir', type=str, help='Directory relative which all output files are stored',
@@ -77,7 +91,15 @@ def main():
     args.phenotype=args.phenotype.replace('"','').strip()
     print('Reading data ...')
 
+<<<<<<< HEAD
     (train_X, train_y) = read_data(args.data, args.features, args.phenotype, 'train')
+=======
+    (train_X, train_y) = read_data(args.data,
+                                   args.features,
+                                   args.phenotype,
+                                   'train'
+                                  )
+>>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
     (val_X, val_y) = read_data(args.data, 
                                args.features,
                                args.phenotype, 
@@ -102,6 +124,7 @@ def main():
     print("test set shape: {}".format(test_X.shape))
 
     if args.phenotype == 'all':
+<<<<<<< HEAD
         tasks = common_utils.phenotype_names
     else:
         assert (args.phenotype in common_utils.phenotype_names
@@ -109,13 +132,26 @@ def main():
                     in common_utils.phenotype_names
                )
         tasks = [args.phenotype.replace('-',' ')]
+=======
+        tasks = phenotype_names
+    else:
+        assert args.phenotype in phenotype_names
+        tasks = [args.phenotype]
+>>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
 
     result_dir = os.path.join(args.output_dir, 'results')
     common_utils.create_directory(result_dir)
 
     logp = ['pop_size','gens','ml','backprop'] 
+<<<<<<< HEAD
     for param_id, params in enumerate(ParameterGrid(hyper_params)):
         est.set_params(**params)
+=======
+    # for param_id, params in enumerate(ParameterGrid(hyper_params)):
+    for param_id, params in enumerate(hyper_params):
+        est.set_params(**params)
+        est.random_state = args.seed
+>>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
         run_id = uuid.uuid1().hex
         model_name = f'feat.run_{run_id}.param_{param_id}'
 
@@ -128,6 +164,7 @@ def main():
 
             # logreg = LogisticRegression(penalty=penalty, C=C, random_state=42)
             est.fit(trainval_X, trainval_y[task])
+<<<<<<< HEAD
             archive = est.get_archive(justfront=False)
 
             train_archive_preds = est.predict_proba_archive(train_X)
@@ -208,6 +245,58 @@ def main():
             json.dump(ret, f)
 
 
+=======
+            train_preds = est.predict_proba(train_X)
+            train_activations[:, task_id] = train_preds[:, 1]
+
+            val_preds = est.predict_proba(val_X)
+            val_activations[:, task_id] = val_preds[:, 1]
+
+            test_preds = est.predict_proba(test_X)
+            test_activations[:, task_id] = test_preds[:, 1]
+        
+            save_results(task, 
+                         test_activations[:, task_id],
+                         test_y[task],
+                         os.path.join(args.output_dir, 
+                                      'predictions', 
+                                      model_name + '.json'
+                                     )
+                         )
+            ret={}
+            ret['data'] = args.features
+            ret['seed'] = args.seed
+            ret['task'] = task
+            ret['run_id'] = run_id
+            ret['param_id'] = param_id
+            ret['fold'] = 'train'
+            ret['method'] = 'FEAT'
+            ret['model'] = est.get_eqn()
+            ret['n_nodes'] = est.get_n_nodes()
+            ret['metrics'] = {'train':{},'val':{},'test':{}}
+            frames = []
+            for y_true, y_pred, fold in [
+                                         (train_y[task], train_preds, 'train'),
+                                         (val_y[task], val_preds, 'val'),
+                                         (test_y[task], test_preds, 'test')
+                                        ]:
+                ret['fold'] = fold
+                emtrix = metrics.print_metrics_binary(y_true, y_pred)
+                for k,v in emtrix.items():
+                    result = ret.copy()
+                    result['metric'] = k
+                    result['value'] = v
+                    frames.append(result)
+
+            results = pd.DataFrame.from_records(frames)
+            results.to_csv(os.path.join(result_dir,f'{task}.{model_name}.csv'),
+                           index=False)
+
+            with open(os.path.join(result_dir, 
+                      f'{task}.{model_name}.params'), 'w') as f:
+                jsonparams = jsonify(est.get_params())
+                json.dump(jsonparams,f)
+>>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
 
 if __name__ == '__main__':
     main()
