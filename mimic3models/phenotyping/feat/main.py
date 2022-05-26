@@ -124,7 +124,6 @@ def main():
     print("test set shape: {}".format(test_X.shape))
 
     if args.phenotype == 'all':
-<<<<<<< HEAD
         tasks = common_utils.phenotype_names
     else:
         assert (args.phenotype in common_utils.phenotype_names
@@ -132,26 +131,13 @@ def main():
                     in common_utils.phenotype_names
                )
         tasks = [args.phenotype.replace('-',' ')]
-=======
-        tasks = phenotype_names
-    else:
-        assert args.phenotype in phenotype_names
-        tasks = [args.phenotype]
->>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
 
     result_dir = os.path.join(args.output_dir, 'results')
     common_utils.create_directory(result_dir)
 
     logp = ['pop_size','gens','ml','backprop'] 
-<<<<<<< HEAD
     for param_id, params in enumerate(ParameterGrid(hyper_params)):
         est.set_params(**params)
-=======
-    # for param_id, params in enumerate(ParameterGrid(hyper_params)):
-    for param_id, params in enumerate(hyper_params):
-        est.set_params(**params)
-        est.random_state = args.seed
->>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
         run_id = uuid.uuid1().hex
         model_name = f'feat.run_{run_id}.param_{param_id}'
 
@@ -164,7 +150,6 @@ def main():
 
             # logreg = LogisticRegression(penalty=penalty, C=C, random_state=42)
             est.fit(trainval_X, trainval_y[task])
-<<<<<<< HEAD
             archive = est.get_archive(justfront=False)
 
             train_archive_preds = est.predict_proba_archive(train_X)
@@ -245,58 +230,6 @@ def main():
             json.dump(ret, f)
 
 
-=======
-            train_preds = est.predict_proba(train_X)
-            train_activations[:, task_id] = train_preds[:, 1]
-
-            val_preds = est.predict_proba(val_X)
-            val_activations[:, task_id] = val_preds[:, 1]
-
-            test_preds = est.predict_proba(test_X)
-            test_activations[:, task_id] = test_preds[:, 1]
-        
-            save_results(task, 
-                         test_activations[:, task_id],
-                         test_y[task],
-                         os.path.join(args.output_dir, 
-                                      'predictions', 
-                                      model_name + '.json'
-                                     )
-                         )
-            ret={}
-            ret['data'] = args.features
-            ret['seed'] = args.seed
-            ret['task'] = task
-            ret['run_id'] = run_id
-            ret['param_id'] = param_id
-            ret['fold'] = 'train'
-            ret['method'] = 'FEAT'
-            ret['model'] = est.get_eqn()
-            ret['n_nodes'] = est.get_n_nodes()
-            ret['metrics'] = {'train':{},'val':{},'test':{}}
-            frames = []
-            for y_true, y_pred, fold in [
-                                         (train_y[task], train_preds, 'train'),
-                                         (val_y[task], val_preds, 'val'),
-                                         (test_y[task], test_preds, 'test')
-                                        ]:
-                ret['fold'] = fold
-                emtrix = metrics.print_metrics_binary(y_true, y_pred)
-                for k,v in emtrix.items():
-                    result = ret.copy()
-                    result['metric'] = k
-                    result['value'] = v
-                    frames.append(result)
-
-            results = pd.DataFrame.from_records(frames)
-            results.to_csv(os.path.join(result_dir,f'{task}.{model_name}.csv'),
-                           index=False)
-
-            with open(os.path.join(result_dir, 
-                      f'{task}.{model_name}.params'), 'w') as f:
-                jsonparams = jsonify(est.get_params())
-                json.dump(jsonparams,f)
->>>>>>> 77206406c15ea8f60bba664ba972d722c33c78b0
 
 if __name__ == '__main__':
     main()
