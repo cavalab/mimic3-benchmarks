@@ -114,7 +114,7 @@ def main():
                 or args.phenotype.replace('-',' ') 
                     in common_utils.phenotype_names
                )
-        tasks = [args.phenotype.replace('-',' ')]
+        tasks = [args.phenotype]
 
     result_dir = os.path.join(args.output_dir, 'results')
     common_utils.create_directory(result_dir)
