@@ -138,60 +138,70 @@ def main():
             archive = est.get_archive(justfront=False)
 
             train_archive_preds = est.predict_proba_archive(train_X)
+            train_archive_preds = {tap['id']:tap['y_proba'] 
+                    for tap in train_archive_preds}
             val_archive_preds = est.predict_proba_archive(val_X)
+            val_archive_preds = {tap['id']:tap['y_proba'] 
+                    for tap in val_archive_preds}
             test_archive_preds = est.predict_proba_archive(test_X)
+            test_archive_preds = {tap['id']:tap['y_proba'] 
+                    for tap in test_archive_preds}
+            
+            savename = f'{task}.{model_name}.arc'
+            frames = []
 
-            for a, (train_preds, val_preds, test_preds) in enumerate(zip(
-                train_archive_preds, 
-                val_archive_preds,
-                test_archive_preds)):
+            for ind in archive:
+                ind_id = ind['id']
+            
+                ret={}
+                ret['model'] = ind['eqn']
+                ret['n_nodes'] = len(ind['program'])
+                ret['data'] = args.features
+                ret['seed'] = args.seed
+                ret['task'] = task
+                ret['run_id'] = run_id
+                ret['method'] = 'FEAT'
+                ret['model'] = ind['eqn']
+                ret['archive_id'] = ind['id']
 
-                train_preds = train_preds.reshape(-1,1)
-                val_preds = val_preds.reshape(-1,1)
-                test_preds = test_preds.reshape(-1,1)
 
-                save_results(task, 
-                             test_activations[:, task_id],
-                             test_y[task],
-                             os.path.join(args.output_dir, 
-                                          'predictions', 
-                                          model_name + f'.arc{a}.json'
-                                         )
-                             )
-                savename = f'{task}.{model_name}.arc{a}'
-                with open(os.path.join(result_dir, 
-                          savename+'.train.json'), 'w') as f:
-                    ret = metrics.print_metrics_binary(train_y[task],
-                                                       train_preds
-                                                      )
-                    ret['data'] = args.features
-                    ret['task'] = task
-                    ret['run_id'] = run_id
-                    ret['param_id'] = param_id
-                    json.dump(jsonify(ret), f)
-                with open(os.path.join(result_dir, 
-                          savename+'.val.json'), 'w') as f:
-                    ret = metrics.print_metrics_binary(val_y[task], val_preds)
-                    ret['data'] = args.features
-                    ret['task'] = task
-                    ret['run_id'] = run_id
-                    ret['param_id'] = param_id
-                    # json.dump(ret, f)
-                    json.dump(jsonify(ret), f)
-                with open(os.path.join(result_dir, 
-                          savename+'.test.json'), 'w') as f:
-                    ret = metrics.print_metrics_binary(test_y[task], test_preds)
-                    ret['data'] = args.features
-                    ret['task'] = task
-                    ret['run_id'] = run_id
-                    ret['param_id'] = param_id
-                    # json.dump(ret, f)
-                    json.dump(jsonify(ret), f)
-            # save parameters
-            with open(os.path.join(result_dir, 
-                      'params_{}.json'.format(model_name)), 'w') as f:
-                jsonparams = jsonify(est.get_params())
-                json.dump(jsonparams,f)
+                for y_true, y_pred, fold in [(
+                                              train_y[task],
+                                              train_archive_preds[ind_id], 
+                                              'train'
+                                             ),
+                                             (
+                                              val_y[task], 
+                                              val_archive_preds[ind_id], 
+                                              'val'
+                                             ),
+                                             ( 
+                                              test_y[task],
+                                              test_archive_preds[ind_id], 
+                                              'test'
+                                             )]:
+
+                    y_pred = y_pred.ravel()
+                    y_pred = np.vstack((1-y_pred,y_pred)).transpose()
+                    assert len(y_true) == len(y_pred)
+
+                    ret['fold'] = fold
+                    emtrix = metrics.print_metrics_binary(y_true, y_pred)
+                    for k,v in emtrix.items():
+                        result = ret.copy()
+                        result['metric'] = k
+                        result['value'] = v
+                        frames.append(result)
+
+
+            results = pd.DataFrame.from_records(frames)
+            results.to_csv(os.path.join(result_dir,savename+'.csv'),
+                           index=False)
+        # save parameters
+        with open(os.path.join(result_dir, 
+                  'params_{}.json'.format(model_name)), 'w') as f:
+            jsonparams = jsonify(est.get_params())
+            json.dump(jsonparams,f)
 
         # print('train activations:',train_activations)
         # print('val activations:',val_activations)

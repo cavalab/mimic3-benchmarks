@@ -4,12 +4,12 @@ from feat import FeatClassifier
 
 est = FeatClassifier(
         max_depth=3,
-        max_dim = 100,
+        max_dim = 10,
         obj='fitness,size',
         sel='lexicase',
         gens = 1,
         pop_size = 10,
-        # tune_final=False,
+        tune_final=False,
         # gens = 100,
         # pop_size = 100,
         max_stall = 20,
@@ -24,7 +24,8 @@ est = FeatClassifier(
         split=0.8,
         normalize=False,
         corr_delete_mutate=True,
-        simplify=0.005
+        simplify=0.005,
+        batch_size=100
 ) 
 
 hyper_params = [
