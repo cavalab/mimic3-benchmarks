@@ -4,7 +4,7 @@ from feat import FeatClassifier
 
 est = FeatClassifier(
         max_depth=3,
-        max_dim = 100,
+        max_dim = 10,
         obj='fitness,size',
         sel='lexicase',
         surv='nsga2',
@@ -25,7 +25,8 @@ est = FeatClassifier(
         split=0.8,
         normalize=False,
         corr_delete_mutate=True,
-        simplify=0.005
+        simplify=0.005,
+        batch_size=100
 ) 
 
 hyper_params = [
