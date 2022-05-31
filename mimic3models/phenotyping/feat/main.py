@@ -120,7 +120,8 @@ def main():
     common_utils.create_directory(result_dir)
 
     logp = ['pop_size','gens','ml','backprop'] 
-    for param_id, params in enumerate(ParameterGrid(hyper_params)):
+    # for param_id, params in enumerate(ParameterGrid(hyper_params)):
+    for param_id, params in enumerate(hyper_params):
         est.set_params(**params)
         run_id = uuid.uuid1().hex
         model_name = f'feat.run_{run_id}.param_{param_id}'
@@ -139,11 +140,16 @@ def main():
             train_archive_preds = est.predict_proba_archive(train_X)
             val_archive_preds = est.predict_proba_archive(val_X)
             test_archive_preds = est.predict_proba_archive(test_X)
+
             for a, (train_preds, val_preds, test_preds) in enumerate(zip(
                 train_archive_preds, 
                 val_archive_preds,
                 test_archive_preds)):
-            
+
+                train_preds = train_preds.reshape(-1,1)
+                val_preds = val_preds.reshape(-1,1)
+                test_preds = test_preds.reshape(-1,1)
+
                 save_results(task, 
                              test_activations[:, task_id],
                              test_y[task],
@@ -155,7 +161,9 @@ def main():
                 savename = f'{task}.{model_name}.arc{a}'
                 with open(os.path.join(result_dir, 
                           savename+'.train.json'), 'w') as f:
-                    ret = metrics.print_metrics_binary(train_y[task], train_preds)
+                    ret = metrics.print_metrics_binary(train_y[task],
+                                                       train_preds
+                                                      )
                     ret['data'] = args.features
                     ret['task'] = task
                     ret['run_id'] = run_id
