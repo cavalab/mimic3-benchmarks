@@ -108,12 +108,8 @@ def main():
     print("test set shape: {}".format(test_X.shape))
 
     if args.phenotype == 'all':
-        tasks = common_utils.phenotype_names
+        tasks = phenotype_names
     else:
-        assert (args.phenotype in common_utils.phenotype_names
-                or args.phenotype.replace('-',' ') 
-                    in common_utils.phenotype_names
-               )
         tasks = [args.phenotype]
 
     result_dir = os.path.join(args.output_dir, 'results')
