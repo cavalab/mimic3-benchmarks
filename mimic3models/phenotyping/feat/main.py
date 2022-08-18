@@ -108,12 +108,8 @@ def main():
     print("test set shape: {}".format(test_X.shape))
 
     if args.phenotype == 'all':
-        tasks = common_utils.phenotype_names
+        tasks = phenotype_names
     else:
-        assert (args.phenotype in common_utils.phenotype_names
-                or args.phenotype.replace('-',' ') 
-                    in common_utils.phenotype_names
-               )
         tasks = [args.phenotype]
 
     result_dir = os.path.join(args.output_dir, 'results')
@@ -123,8 +119,6 @@ def main():
     # for param_id, params in enumerate(ParameterGrid(hyper_params)):
     for param_id, params in enumerate(hyper_params):
         est.set_params(**params)
-        run_id = uuid.uuid1().hex
-        model_name = f'feat.run_{run_id}.param_{param_id}'
 
         train_activations = np.zeros(shape=train_y.shape, dtype=float)
         val_activations = np.zeros(shape=val_y.shape, dtype=float)
@@ -147,7 +141,9 @@ def main():
             test_archive_preds = {tap['id']:tap['y_proba'] 
                     for tap in test_archive_preds}
             
-            savename = f'{task}.{model_name}.arc'
+            run_id = uuid.uuid1().hex
+            model_name = f'feat.run_{run_id}.param_{param_id}'
+            savename = f'{task}.{model_name}'
             frames = []
 
             for ind in archive:
@@ -160,10 +156,20 @@ def main():
                 ret['seed'] = args.seed
                 ret['task'] = task
                 ret['run_id'] = run_id
+                ret['param_id'] = param_id
                 ret['method'] = 'FEAT'
                 ret['model'] = ind['eqn']
                 ret['archive_id'] = ind['id']
 
+                pred_name = (savename + f'arc_{ind_id}' + '.json')
+                save_results(task, 
+                             test_archive_preds[ind_id].ravel(),
+                             test_y[task],
+                             os.path.join(args.output_dir, 
+                                          'predictions', 
+                                          pred_name
+                                         )
+                             )
 
                 for y_true, y_pred, fold in [(
                                               train_y[task],
@@ -183,7 +189,12 @@ def main():
 
                     y_pred = y_pred.ravel()
                     y_pred = np.vstack((1-y_pred,y_pred)).transpose()
-                    assert len(y_true) == len(y_pred)
+                    # assert len(y_true) == len(y_pred)
+                    if  len(y_true) != len(y_pred):
+                        print(f'WARN: len(y_true)={len(y_true)}',
+                              f'len(y_pred)={len(y_pred)}. ',
+                              f'for ind_id={ind_id}. not saving result.')
+                        continue
 
                     ret['fold'] = fold
                     emtrix = metrics.print_metrics_binary(y_true, y_pred)

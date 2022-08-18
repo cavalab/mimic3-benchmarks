@@ -4,14 +4,15 @@ from feat import FeatClassifier
 
 est = FeatClassifier(
         max_depth=3,
-        max_dim = 10,
+        max_dim = 100,
         obj='fitness,size',
         sel='lexicase',
-        gens = 1,
-        pop_size = 10,
-        tune_final=False,
-        # gens = 100,
-        # pop_size = 100,
+        surv='nsga2',
+        # gens = 1,
+        # pop_size = 10,
+        # tune_final=False,
+        gens = 100,
+        pop_size = 100,
         max_stall = 20,
         stagewise_xo = True,
         scorer='log',
@@ -25,17 +26,16 @@ est = FeatClassifier(
         normalize=False,
         corr_delete_mutate=True,
         simplify=0.005,
-        batch_size=100
 ) 
 
 hyper_params = [
     dict(
          functions="split,and,or,not,b2f"
-        ),
-    dict(
-         functions="+,-,*,relu,split",
-         batch_size=200,
-         backprop=True,
-         iters=1,
         )
+    # dict(
+    #      functions="+,-,*,relu,split",
+    #      batch_size=200,
+    #      backprop=True,
+    #      iters=1,
+    #     )
 ]
