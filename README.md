@@ -27,11 +27,11 @@ Here are some convenience scripts for batch analysis:
 
 This repo is used to generate results in the following paper:
 
-La~Cava, W., Lee, P. C., Ajmal, I., Ding, X., Solanki, P., Cohen, J. B., Moore, J. H., & Herman, D. S. (2020).
+La Cava, W., Lee, P. C., Ajmal, I., Ding, X., Solanki, P., Cohen, J. B., Moore, J. H., & Herman, D. S. (2020).
 Application of concise machine learning to construct accurate and interpretable EHR computable phenotypes.
 [MedRxiv, 2020.12.12.20248005.](https://doi.org/10.1101/2020.12.12.20248005)
 
-Additional results can be found at https://bitbucket.org/hermanlab/ehr_feat. 
+Additional results can be found at https://bitbucket.org/hermanlab/ehr_feat . 
 
 ## Contact
 
