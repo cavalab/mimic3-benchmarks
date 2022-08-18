@@ -7,8 +7,9 @@ est = FeatClassifier(
         max_dim = 1000,
         obj='fitness,size',
         sel='lexicase',
-        # gens = 0,
-        # pop_size = 1,
+        surv='nsga2',
+        # gens = 1,
+        # pop_size = 10,
         # tune_final=False,
         gens = 100,
         pop_size = 100,
@@ -24,17 +25,17 @@ est = FeatClassifier(
         split=0.8,
         normalize=False,
         corr_delete_mutate=True,
-        simplify=0.005
+        simplify=0.005,
 ) 
 
 hyper_params = [
     dict(
          functions="split,and,or,not,b2f"
-        ),
-    dict(
-         functions="+,-,*,relu,split",
-         batch_size=200,
-         backprop=True,
-         iters=1,
         )
+    # dict(
+    #      functions="+,-,*,relu,split",
+    #      batch_size=200,
+    #      backprop=True,
+    #      iters=1,
+    #     )
 ]
