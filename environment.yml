@@ -1,0 +1,32 @@
+name:
+  mimic3
+channels:
+  - conda-forge
+dependencies:
+  - nodejs
+  # Keras==2.1.2
+  # - pip:
+  - tqdm
+  # - numpy==1.13.1
+  - numpy 
+  # - scikit-learn==0.18.2
+  - scikit-learn
+  - pandas==0.20.*
+# feat
+  - python=3.*
+  - cmake=3.18.*
+  - ninja
+  - eigen=3.3.*
+  - cython=0.29.*
+  # - pandas=1.1.*
+  # - scikit-learn=0.23.*
+  - setuptools=45.*
+  - shogun-cpp=6.1.4
+  - wheel=0.35.*
+  - tsfresh
+  - pip=20.*
+  - pip:
+    - pyyaml==5.4.1
+    - eigency==1.77
+    - pqdm
+    - ipdb
