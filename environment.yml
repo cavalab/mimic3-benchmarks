@@ -27,6 +27,6 @@ dependencies:
   - pip=20.*
   - pip:
     - pyyaml==5.4.1
-    - eigency==1.77
+    - eigency
     - pqdm
     - ipdb

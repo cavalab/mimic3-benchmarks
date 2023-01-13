@@ -1,5 +1,4 @@
 rdir="results_linear"
-# rdir="results_test2"
 ntrials=1
 seeds=$(cat seeds.txt | head -n $ntrials)
 mkdir -p $rdir

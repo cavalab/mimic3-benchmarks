@@ -1,6 +1,4 @@
-# rdir="results_feat_tsfresh_v0.5.2.post48_w_original_experiment_settings"
 rdir="results_archive_dim100_22-06-07"
-# rdir="results_test2"
 ntrials=10
 seeds=$(cat seeds.txt | head -n $ntrials)
 mkdir -p $rdir
@@ -38,8 +36,6 @@ phenotype_names=(
 N=1
 q="epistasis_long"
 mem=16384
-# mem=8192
-# mem=4096
 
 timeout=36000
 count=0
